@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Water | Water Level</title>
+    <meta name="description" content="Real-time ultrasonic sensor water level monitoring with 24-hour history charts.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/theme.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Hero + tank two-column */
+        .wl-top-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            margin-bottom: 24px;
+            align-items: start;
+        }
+        @media (max-width: 860px) { .wl-top-grid { grid-template-columns: 1fr; } }
+
+        /* Tank visual */
+        .tank-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+        }
+        .tank-outer {
+            width: 100px;
+            height: 200px;
+            border: 3px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            background: rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .tank-fill {
+            width: 100%;
+            transition: height 1s ease, background 0.5s;
+            border-radius: 0 0 5px 5px;
+        }
+        .tank-pct {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 12px;
+        }
+        .tank-vol {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* 4-stat mini strip */
+        .wl-stats-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        @media (max-width: 720px) { .wl-stats-strip { grid-template-columns: repeat(2,1fr); } }
+
+        .mini-stat {
+            padding: 16px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+        .mini-stat-val { font-size: 1.6rem; font-weight: 700; }
+        .mini-stat-lbl { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; }
+
+        /* Threshold badges */
+        .thresh-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i data-feather="droplet" class="logo-icon"></i>
+                <h2>AquaSense</h2>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link"><i data-feather="grid"></i> Dashboard</a>
+                <a href="water-level.html" class="nav-link active"><i data-feather="layers"></i> Water Level</a>
+                <a href="flow.html" class="nav-link"><i data-feather="activity"></i> Flow Rate</a>
+                <a href="alerts.html" class="nav-link"><i data-feather="bell"></i> Alerts &amp; SMS</a>
+                <a href="reports.html" class="nav-link"><i data-feather="file-text"></i> Reports</a>
+                <a href="settings.html" class="nav-link"><i data-feather="settings"></i> Settings</a>
+                <a href="users.html" class="nav-link admin-only" style="display:none;"><i data-feather="users"></i> User Mgmt</a>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar" id="sidebarAvatar">—</div>
+                    <div>
+                        <div style="font-weight:600;font-size:0.9rem;" id="sidebarName">Loading…</div>
+                        <div style="font-size:0.78rem;color:var(--text-secondary);" id="sidebarRole"></div>
+                    </div>
+                    <a href="login.html" style="margin-left:auto;color:var(--text-secondary);" title="Logout">
+                        <i data-feather="log-out"></i>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="page-title">
+                    <h1>Water Level Monitoring</h1>
+                    <p>Ultrasonic sensor real-time data &amp; 24-hour analytics</p>
+                </div>
+                <div class="header-actions">
+                    <span id="wl-last-updated" style="font-size:0.82rem;color:var(--text-secondary);margin-right:8px;"></span>
+                    <button class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <i id="theme-icon" data-feather="moon"></i>
+                    </button>
+                    <button class="icon-btn" onclick="poll()" title="Refresh"><i data-feather="refresh-cw"></i></button>
+                </div>
+            </header>
+
+            <!-- Hero + Tank -->
+            <div class="wl-top-grid">
+                <!-- Stats column -->
+                <div style="display:flex;flex-direction:column;gap:16px;">
+                    <!-- Hero card -->
+                    <div id="wl-hero-card" class="stat-card glass-panel success">
+                        <div class="stat-header">
+                            <span class="stat-title">Current Level — ESP32-001</span>
+                            <div class="stat-icon"><i data-feather="layers"></i></div>
+                        </div>
+                        <div style="display:flex;align-items:flex-end;gap:12px;margin-top:4px;">
+                            <div class="stat-value" style="font-size:3.5rem;line-height:1;">
+                                <span id="wl-hero-value">—</span><span style="font-size:1.6rem;color:var(--text-secondary);">%</span>
+                            </div>
+                            <div style="padding-bottom:8px;">
+                                <div id="wl-status-text" style="font-weight:500;font-size:0.95rem;color:var(--success-color);">Fetching…</div>
+                                <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px;">
+                                    Est. volume: <strong id="wl-est-vol">—</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Threshold badges -->
+                    <div class="glass-panel" style="padding:16px 20px;">
+                        <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:10px;font-weight:500;">ACTIVE THRESHOLDS</div>
+                        <span class="thresh-badge" style="background:rgba(239,68,68,0.12);color:#ef4444;">
+                            <i data-feather="alert-octagon" style="width:13px;"></i> Critical: <span id="wl-thresh-crit">15%</span>
+                        </span>
+                        <span class="thresh-badge" style="background:rgba(245,158,11,0.12);color:#f59e0b;">
+                            <i data-feather="alert-triangle" style="width:13px;"></i> Warning: <span id="wl-thresh-warn">25%</span>
+                        </span>
+                    </div>
+
+                    <!-- Time to empty card -->
+                    <div class="stat-card glass-panel warning">
+                        <div class="stat-header">
+                            <span class="stat-title">Estimated Time to Empty</span>
+                            <div class="stat-icon"><i data-feather="clock"></i></div>
+                        </div>
+                        <div class="stat-value" id="wl-time-empty" style="font-size:1.8rem;margin-top:4px;">—</div>
+                        <div class="stat-footer"><span style="color:var(--text-secondary);">At current avg discharge rate</span></div>
+                    </div>
+                </div>
+
+                <!-- Tank visual -->
+                <div class="glass-panel tank-wrap">
+                    <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:14px;font-weight:500;letter-spacing:0.05em;">LIVE TANK</div>
+                    <div class="tank-outer">
+                        <div class="tank-fill" id="wl-tank-fill" style="height:50%;background:linear-gradient(to top,var(--primary-color),#60a5fa);"></div>
+                    </div>
+                    <div class="tank-pct" id="wl-tank-pct">—%</div>
+                    <div class="tank-vol" id="wl-est-vol-tank">5,000 L capacity</div>
+                </div>
+            </div>
+
+            <!-- 24h mini stats -->
+            <div class="wl-stats-strip">
+                <div class="mini-stat glass-panel">
+                    <div class="mini-stat-val" id="wl-avg" style="color:#3b82f6;">—</div>
+                    <div class="mini-stat-lbl">24h Avg Level</div>
+                </div>
+                <div class="mini-stat glass-panel">
+                    <div class="mini-stat-val" id="wl-min" style="color:#ef4444;">—</div>
+                    <div class="mini-stat-lbl">24h Minimum</div>
+                </div>
+                <div class="mini-stat glass-panel">
+                    <div class="mini-stat-val" id="wl-max" style="color:#10b981;">—</div>
+                    <div class="mini-stat-lbl">24h Maximum</div>
+                </div>
+                <div class="mini-stat glass-panel">
+                    <div class="mini-stat-val" id="wl-time-empty-strip" style="color:#f59e0b;">—</div>
+                    <div class="mini-stat-lbl">Time to Empty</div>
+                </div>
+            </div>
+
+            <!-- History chart -->
+            <div class="chart-card glass-panel">
+                <div class="card-header">
+                    <h3 class="card-title">24-Hour Level History</h3>
+                    <span style="font-size:0.82rem;color:var(--text-secondary);">Live rolling — updates every 10s</span>
+                </div>
+                <div class="chart-container" style="height:320px;">
+                    <canvas id="wl-history-chart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/water-level.js"></script>
+</body>
+</html>

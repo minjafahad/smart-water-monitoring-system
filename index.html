@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Water Dashboard | Home</title>
+    <meta name="description" content="Smart Water Services Monitoring System — real-time tank level, flow rate and sensor dashboard.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/theme.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Tank mini visual inside the chart panel */
+        .tank-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 16px;
+            gap: 12px;
+        }
+        .tank-outer {
+            width: 90px;
+            height: 180px;
+            border: 3px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            background: rgba(0,0,0,0.2);
+        }
+        .tank-inner {
+            width: 100%;
+            transition: height 1.2s ease, background 0.5s;
+            border-radius: 0 0 5px 5px;
+            background: linear-gradient(to top, var(--primary-color), #60a5fa);
+        }
+        .tank-label {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: 4px; right: 4px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 700;
+            border-radius: 50%;
+            width: 16px; height: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .icon-btn { position: relative; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i data-feather="droplet" class="logo-icon"></i>
+                <h2>AquaSense</h2>
+            </div>
+
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active"><i data-feather="grid"></i> Dashboard</a>
+                <a href="water-level.html" class="nav-link"><i data-feather="layers"></i> Water Level</a>
+                <a href="flow.html" class="nav-link"><i data-feather="activity"></i> Flow Rate</a>
+                <a href="alerts.html" class="nav-link"><i data-feather="bell"></i> Alerts &amp; SMS</a>
+                <a href="reports.html" class="nav-link"><i data-feather="file-text"></i> Reports</a>
+                <a href="settings.html" class="nav-link"><i data-feather="settings"></i> Settings</a>
+                <a href="users.html" class="nav-link admin-only" style="display:none;"><i data-feather="users"></i> User Mgmt</a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="avatar" id="sidebarAvatar">—</div>
+                    <div>
+                        <div style="font-weight:600;font-size:0.9rem;" id="sidebarName">Loading…</div>
+                        <div style="font-size:0.78rem;color:var(--text-secondary);" id="sidebarRole"></div>
+                    </div>
+                    <a href="login.html" style="margin-left:auto;color:var(--text-secondary);cursor:pointer;" title="Logout">
+                        <i data-feather="log-out"></i>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="page-title">
+                    <h1>System Overview</h1>
+                    <p id="lastUpdated" style="color:var(--text-secondary);font-size:0.85rem;">
+                        Real-time status of the Smart Water Services Monitoring System
+                    </p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-primary admin-only" onclick="window.location.href='users.html?action=add'" 
+                        style="display: none; align-items: center; gap: 6px; font-size: 0.85rem; padding: 8px 16px; margin-right: 12px;">
+                        <i data-feather="user-plus" style="width: 16px; height: 16px;"></i>
+                        Add User
+                    </button>
+                    <button class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">
+                        <i id="theme-icon" data-feather="moon"></i>
+                    </button>
+                    <button class="icon-btn" onclick="pollDashboard()" title="Refresh">
+                        <i data-feather="refresh-cw"></i>
+                    </button>
+                    <button class="icon-btn" onclick="window.location.href='alerts.html'" title="Alerts">
+                        <i data-feather="bell"></i>
+                        <span class="notification-badge" id="alertBadge"></span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Key Metric Cards -->
+            <div class="dashboard-grid">
+                <!-- Water Level -->
+                <div class="stat-card glass-panel success" id="wl-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Tank Water Level</span>
+                        <div class="stat-icon"><i data-feather="layers"></i></div>
+                    </div>
+                    <div class="stat-value" id="currentLevel">—</div>
+                    <div class="stat-footer">
+                        <span id="wl-status-badge" class="trend up">
+                            <i data-feather="check-circle" style="width:14px;"></i> Normal
+                        </span>
+                        <span style="color:var(--text-secondary);" id="wl-vs-prev"></span>
+                    </div>
+                </div>
+
+                <!-- Flow Rate -->
+                <div class="stat-card glass-panel info" id="fr-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Current Flow Rate</span>
+                        <div class="stat-icon" style="background:rgba(59,130,246,0.1);color:#3b82f6;">
+                            <i data-feather="activity"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="currentFlow">—</div>
+                    <div class="stat-footer">
+                        <span id="fl-status-badge" class="trend down">
+                            <i data-feather="arrow-down-right" style="width:14px;"></i> Steady
+                        </span>
+                        <span style="color:var(--text-secondary);">Flow rate</span>
+                    </div>
+                </div>
+
+                <!-- 24h Stats -->
+                <div class="stat-card glass-panel info">
+                    <div class="stat-header">
+                        <span class="stat-title">24h Avg Level</span>
+                        <div class="stat-icon" style="background:rgba(139,92,246,0.1);color:#8b5cf6;">
+                            <i data-feather="trending-up"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="avg24hLevel">—</div>
+                    <div class="stat-footer">
+                        <span style="color:var(--text-secondary);">Min: <span id="min24h">—</span> &nbsp;|&nbsp; Max: <span id="max24h">—</span></span>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="stat-card glass-panel warning" id="sys-card">
+                    <div class="stat-header">
+                        <span class="stat-title">System Status</span>
+                        <div class="stat-icon"><i data-feather="wifi"></i></div>
+                    </div>
+                    <div class="stat-value" id="sysStatus" style="font-size:1.4rem;margin-top:5px;">Online</div>
+                    <div class="stat-footer">
+                        <span class="trend up"><i data-feather="check-circle" style="width:14px;"></i></span>
+                        <span style="color:var(--text-secondary);">ESP32 Connected</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <!-- Trend Chart -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h3 class="card-title">Water Level &amp; Flow Trends (24h)</h3>
+                        <select id="rangeSelector" style="background:var(--bg-color);color:var(--text-primary);border:1px solid var(--border-color);padding:4px 8px;border-radius:4px;font-family:Inter,sans-serif;">
+                            <option value="Today">Today</option>
+                            <option value="Yesterday">Yesterday</option>
+                            <option value="Last 7 Days">Last 7 Days</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Live Tank Visual -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h3 class="card-title">Live Tank Status</h3>
+                    </div>
+                    <div class="tank-container">
+                        <div class="tank-outer">
+                            <div class="tank-inner" id="tankVisual" style="height:50%;"></div>
+                        </div>
+                        <div class="tank-label" id="tankPercentageText">—%</div>
+                        <div style="color:var(--text-secondary);font-size:0.85rem;">
+                            Vol: <span style="color:var(--text-primary);font-weight:bold;" id="tankEstVol">—</span>
+                        </div>
+                        <div style="margin-top:8px;display:flex;gap:12px;font-size:0.78rem;">
+                            <span style="color:#ef4444;">● Critical: <span id="dash-crit">15%</span></span>
+                            <span style="color:#f59e0b;">● Warning: <span id="dash-warn">25%</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts Table -->
+            <div class="alerts-card glass-panel">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Alerts &amp; Logs</h3>
+                    <a href="alerts.html" class="icon-btn" style="height:32px;width:auto;padding:0 14px;font-size:0.85rem;display:flex;align-items:center;gap:6px;text-decoration:none;color:var(--text-primary);">
+                        <i data-feather="external-link" style="width:15px;"></i> View All
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Event Type</th>
+                                <th>Source</th>
+                                <th>Details</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashAlertsTbody">
+                            <tr>
+                                <td colspan="5" style="text-align:center;color:var(--text-secondary);padding:24px;">
+                                    Loading alerts…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

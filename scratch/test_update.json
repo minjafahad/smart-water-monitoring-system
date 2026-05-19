@@ -1,0 +1,8 @@
+{
+  "id": 23,
+  "full_name": "Updated Test User",
+  "email": "test@test.com",
+  "phone": "+255777777777",
+  "role": "viewer",
+  "is_active": 1
+}

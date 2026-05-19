@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script src="js/theme.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Water | Sign Up</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="auth-container">
+        <button class="icon-btn" onclick="toggleTheme()" title="Toggle Theme" style="position:absolute; top:24px; right:24px; z-index:100; background:rgba(0,0,0,0.2); border:1px solid var(--border-color); color:var(--text-primary); border-radius:12px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <i id="theme-icon" data-feather="moon"></i>
+        </button>
+        <div class="bg-blob blob-1"></div>
+        <div class="bg-blob blob-2" style="background: var(--success-color);"></div>
+
+        <div style="position: absolute; top: 6%; width: 100%; text-align: center; z-index: 10;">
+            <h2
+                style="margin: 0; color: #fff; font-size: 2rem; font-weight: 700; text-shadow: 0 4px 15px rgba(0,0,0,0.3); letter-spacing: 1px;">
+                Welcome to Aqua Sense</h2>
+            <p style="margin: 8px 0 0; color: var(--text-secondary); font-size: 1.1rem; letter-spacing: 0.5px;">Smart
+                Water Monitoring System</p>
+        </div>
+
+        <div class="auth-card glass-panel">
+            <div class="auth-header">
+                <i data-feather="user-plus"
+                    style="filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4)); color: var(--success-color);"></i>
+                <h1>Create Account</h1>
+                <p>Register for access to the system</p>
+            </div>
+
+            <form id="registerForm">
+                <div id="errorMessage"
+                    style="display:none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fecaca; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; text-align: left;">
+                </div>
+                <div id="successMessage"
+                    style="display:none; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #a7f3d0; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; text-align: left;">
+                </div>
+
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name" class="form-control" placeholder="John Doe" required
+                        autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="Choose a username" required
+                        autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" class="form-control" placeholder="user@example.com" required
+                        autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number (Tanzania)</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="tel" id="phone" class="form-control" value="+255" placeholder="+255 7XX XXX XXX" required
+                            autocomplete="tel" maxlength="13">
+                    </div>
+                    <small style="color: var(--text-secondary); font-size: 0.75rem;">Format: +255 followed by 9 digits (e.g., +255712345678)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Create Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="••••••••" required
+                        autocomplete="new-password">
+                    <small style="color: var(--text-secondary); display: block; margin-top: 5px; font-size: 0.75rem;">Must contain at least 8 chars, 1 uppercase, 1 lowercase.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password">Confirm Password</label>
+                    <input type="password" id="confirm_password" class="form-control" placeholder="••••••••" required
+                        autocomplete="new-password">
+                </div>
+
+                <button type="submit" class="btn"
+                    style="background: var(--success-color); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">Register
+                    Account</button>
+            </form>
+
+            <div style="margin-top: 24px; font-size: 0.85rem; color: var(--text-secondary);">
+                Already have an account? <a href="login.html"
+                    style="color: var(--primary-color); text-decoration: none;">Sign In</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const btn = this.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerHTML = '<i data-feather="loader" class="spin"></i> Registering...';
+            feather.replace();
+
+            const full_name = document.getElementById('full_name').value;
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+
+            const errBox = document.getElementById('errorMessage');
+            const sucBox = document.getElementById('successMessage');
+            errBox.style.display = 'none';
+            sucBox.style.display = 'none';
+            
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+            if (!passwordRegex.test(password)) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Password must be at least 8 chars long, with 1 uppercase and 1 lowercase letter.';
+                btn.innerText = originalText;
+                return;
+            }
+
+            const tanzaniaPhoneRegex = /^\+255\d{9}$/;
+            if (!tanzaniaPhoneRegex.test(phone)) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Please enter a valid Tanzania phone number (+255 followed by 9 digits).';
+                btn.innerText = originalText;
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Passwords do not match';
+                btn.innerText = originalText;
+                return;
+            }
+
+            try {
+                const res = await fetch('api/auth.php?action=register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_name, username, email, phone, password })
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    sucBox.style.display = 'block';
+                    sucBox.innerText = data.message + ' Redirecting to dashboard...';
+                    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+                } else {
+                    errBox.style.display = 'block';
+                    errBox.innerText = data.message || 'Registration failed';
+                    btn.innerText = originalText;
+                }
+            } catch (err) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Network error occurred';
+                btn.innerText = originalText;
+            }
+        });
+    </script>
+    <style>
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</body>
+
+</html>
